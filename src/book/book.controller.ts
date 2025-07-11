@@ -1,7 +1,17 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { BookService } from './book.service';
 import { Book } from './schemas/book.schemas';
 import { CreateBookDto } from './dto/create-book.dto';
+import { handleError } from 'src/common/utils/error.util';
+import { UpdateBookDto } from './dto/update-book.dto';
 
 @Controller('books')
 export class BookController {
@@ -20,19 +30,29 @@ export class BookController {
   }
 
   @Post()
-  async createBook(@Body() createBookDto: CreateBookDto): Promise<Book | undefined> {
+  async createBook(
+    @Body() createBookDto: CreateBookDto,
+  ): Promise<Book | undefined> {
     try {
       return this.bookService.create(createBookDto);
     } catch (error) {
-      throw new Error(error);
+      console.log('Error =>', error);
+      handleError(error);
     }
   }
 
-  //   @Put('/:id')
-  //   updateBook(
-  //     @Param('id') id: string,
-  //     @Body() book: Partial<Book>,
-  //   ): Partial<Book> | undefined {
-  //     // return this.bookService.update(book, id);
-  //   }
+  @Put('/:id')
+  updateBook(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto) {
+    try {
+      return this.bookService.update(id, updateBookDto);
+    } catch (error) {
+      handleError(error);
+    }
+  }
+
+  @Delete('/:id')
+  deleteBook(@Param('id') id: string)
+  {
+    return this.bookService.delete(id);
+  }
 }

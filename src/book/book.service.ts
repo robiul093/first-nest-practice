@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Book } from './schemas/book.schemas';
+import { CreateBookDto } from './dto/create-book.dto';
+import { handleError } from 'src/common/utils/error.util';
+import { UpdateBookDto } from './dto/update-book.dto';
 
 @Injectable()
 export class BookService {
@@ -19,55 +22,53 @@ export class BookService {
   async findOne(bookId: string | undefined): Promise<Book | undefined> {
     const book = await this.bookModel.findOne({ id: bookId });
 
+    if(!book){
+      throw new NotFoundException(`Book with id ${bookId} not found`)
+    }
+
     return book ?? undefined;
   }
 
-  async create(book: Book | undefined): Promise<Book | undefined> {
+  async create(
+    createBookDto: CreateBookDto | undefined,
+  ): Promise<Book | undefined> {
     try {
-      const result = await this.bookModel.create(book);
+      const allBooks = await this.bookModel.find();
+      const id = (allBooks.length + 1).toString();
+      const newBook = { id, ...createBookDto };
+
+      const result = await this.bookModel.create(newBook);
 
       return result ?? undefined;
     } catch (error) {
-      throw new Error(error)
+      handleError(error);
     }
   }
 
-  //   create(book: Partial<Book>): Book | undefined {
-  //     const bookId = (books.length + 1).toString();
-  //     const newBook = {
-  //       id: bookId,
-  //       title: book.title ?? '',
-  //       author: book.author ?? '',
-  //       genre: book.genre ?? '',
-  //       publishedYear: book.publishedYear ?? 0,
-  //       price: book.price ?? 0,
-  //       inStock: book.inStock ?? false,
-  //     };
-  //     books.push(newBook);
-  //     return newBook;
-  //   }
+  async update(id: string | undefined, updateBookDto: UpdateBookDto) {
+    const updatedBook = await this.bookModel.updateOne({ id }, updateBookDto, {
+      new: true,
+      runValidators: true
+    });
 
-  //   update(book: Partial<Book>, bookId: string) {
-  //     const currentBook = books.find((book) => book.id === bookId);
+    return updatedBook;
+  }
 
-  //     const updatedBook = {
-  //       id: bookId,
-  //       title: book.title ?? currentBook?.title,
-  //       author: book.author ?? currentBook?.author,
-  //       genre: book.genre ?? currentBook?.genre,
-  //       publishedYear: book.publishedYear ?? currentBook?.publishedYear,
-  //       price: book.price ?? currentBook?.price,
-  //       inStock: book.inStock ?? currentBook?.inStock,
-  //     };
+  async delete(id: string) {
+    try {
+      const findBook = await this.bookModel.findOne({ id });
+      if (!findBook)
+        throw new NotFoundException(`Book with id ${id} not found`);
 
-  //     books.map((book) => {
-  //       if (book.id === bookId) {
-  //         return updatedBook;
-  //       } else {
-  //         return book;
-  //       }
-  //     });
-
-  //     return updatedBook;
-  //   }
+      const result = await this.bookModel.deleteOne({ id });
+      if (result.acknowledged && result.deletedCount) {
+        return {
+          message: 'Book Deleted Successfully',
+          deletedCount: result?.deletedCount,
+        };
+      }
+    } catch (error) {
+      handleError(error);
+    }
+  }
 }
